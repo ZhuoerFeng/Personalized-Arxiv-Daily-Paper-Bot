@@ -1,3 +1,5 @@
+
+```
 arxiv_daily_reviewer/
 ├── .github/
 │   └── workflows/
@@ -31,9 +33,10 @@ arxiv_daily_reviewer/
 ├── .gitignore                   # 告诉 Git 忽略哪些文件 (如 .env, venv/, data/ 等)
 ├── requirements.txt             # 项目依赖项 (如 langchain, google-genai, arxiv, jinja2)
 └── README.md                    # 项目说明文档，记录如何本地运行和配置
+```
 
 
-## 第二步：获取邮箱的“授权码” (App Password)
+## QA：获取邮箱的“授权码” (App Password)
 
 为了安全，现在几乎所有的邮箱都不允许第三方脚本直接用“登录密码”发邮件，而是需要生成一串专用的“授权码”。
 

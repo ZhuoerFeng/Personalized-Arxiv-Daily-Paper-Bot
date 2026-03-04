@@ -41,6 +41,7 @@ def main():
     
     total_scanned = len(raw_papers)
     high_value_papers = [] # 初始化为空列表
+    total_tokens_consumed = 0
 
     # 逻辑分流：如果抓到了论文，才去打分；否则直接跳到发信步骤
     if total_scanned == 0:
@@ -50,7 +51,7 @@ def main():
         # 步骤 2: AI 批量粗筛打分
         # ==========================================
         logger.info(f"👉 步骤 2: 正在交由 {MODEL_NAME} 进行相关度粗筛打分...")
-        scored_papers = batch_coarse_filter(
+        scored_papers, total_tokens_consumed = batch_coarse_filter(
             papers=raw_papers, 
             keywords=KEYWORDS, 
             model_name=MODEL_NAME, 
@@ -59,7 +60,7 @@ def main():
         high_value_papers = [p for p in scored_papers if p.get("relevance_score", 0) >= MIN_SCORE_THRESHOLD]
         high_value_papers = [p for p in high_value_papers if p.get("quality_score", 0) >= MIN_SCORE_THRESHOLD]
         logger.info(f"粗筛完成: 扫描 {total_scanned} 篇，命中 {len(high_value_papers)} 篇高分论文。")
-
+        logger.info(f"💰 本次运行总计消耗 Token: {total_tokens_consumed}")
     # ==========================================
     # 步骤 3: 渲染 HTML 邮件模板
     # ==========================================
@@ -72,7 +73,8 @@ def main():
         "date": today_str,
         "keywords": ", ".join(KEYWORDS),
         "total_scanned": total_scanned,
-        "papers": high_value_papers
+        "papers": high_value_papers,
+        "total_tokens": total_tokens_consumed
     }
     
     html_content = template.render(**template_data)

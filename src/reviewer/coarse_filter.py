@@ -48,6 +48,7 @@ def batch_coarse_filter(papers: list[dict], keywords: list[str], model_name: str
     gateway = GateWays(model_name=model_name)
     
     scored_papers = []
+    total_tokens_used = 0
     total_batches = math.ceil(len(papers) / batch_size)
     
     print(f"总计 {len(papers)} 篇论文，将分为 {total_batches} 个批次进行粗筛...")
@@ -121,6 +122,12 @@ def batch_coarse_filter(papers: list[dict], keywords: list[str], model_name: str
                 max_completion_tokens=2000 # 确保 token 足够输出一个批次的 JSON
             )
             
+            # 从 response.usage 中提取并累加 Token
+            if hasattr(response, 'usage') and response.usage:
+                batch_tokens = response.usage.total_tokens
+                total_tokens_used += batch_tokens
+                print(f"批次 {current_batch_num} 消耗 Token: {batch_tokens}")
+            
             # 获取模型输出的文本
             content = response.choices[0].message.content
             
@@ -156,5 +163,5 @@ def batch_coarse_filter(papers: list[dict], keywords: list[str], model_name: str
         reverse=True
     )
     
-    return scored_papers
+    return scored_papers, total_tokens_used
 
