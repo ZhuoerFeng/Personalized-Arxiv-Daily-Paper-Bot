@@ -3,3 +3,6 @@ __pycache__
 plaincode.md
 converter.py
 src/llmapi/model.py
+data/pdfs/
+data/reviews/
+data/reports

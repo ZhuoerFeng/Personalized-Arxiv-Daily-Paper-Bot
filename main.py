@@ -4,6 +4,8 @@ import logging
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
+import json
+
 
 # 1. 初始化路径与环境变量
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +30,9 @@ def main():
     TARGET_CATEGORIES = ["cs.AI", "cs.CL", "cs.LG"]
     KEYWORDS = ["Benchmark", "Evaluation", "Reward Model", "LLM Agent", "Memory", 'Long Context', "Reasoning", "Reinforcement Learning", 'Creative Writing'] # 粗筛关键词
     MIN_SCORE_THRESHOLD = 5
-    RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
+    # RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
+    receiver_emails_str = os.getenv("RECEIVER_EMAILS", os.getenv("RECEIVER_EMAIL", ""))
+    RECEIVER_EMAILS = [email.strip() for email in receiver_emails_str.split(",") if email.strip()]
     MODEL_NAME = "gemini-2.5-pro" 
     
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -61,6 +65,21 @@ def main():
         high_value_papers = [p for p in high_value_papers if p.get("quality_score", 0) >= MIN_SCORE_THRESHOLD]
         logger.info(f"粗筛完成: 扫描 {total_scanned} 篇，命中 {len(high_value_papers)} 篇高分论文。")
         logger.info(f"💰 本次运行总计消耗 Token: {total_tokens_consumed}")
+
+        # ==========================================
+        # 【新增】保存过滤结果 (JSON) 到本地
+        # ==========================================
+        reviews_dir = os.path.join(project_root, 'data', 'reviews')
+        os.makedirs(reviews_dir, exist_ok=True)
+        results_file = os.path.join(reviews_dir, f"filter_results_{today_str}.json")
+        
+        try:
+            with open(results_file, 'w', encoding='utf-8') as f:
+                json.dump(scored_papers, f, ensure_ascii=False, indent=2)
+            logger.info(f"💾 过滤结果 JSON 已保存至: {results_file}")
+        except Exception as e:
+            logger.error(f"❌ 保存过滤结果失败: {e}")
+
     # ==========================================
     # 步骤 3: 渲染 HTML 邮件模板
     # ==========================================
@@ -80,9 +99,27 @@ def main():
     html_content = template.render(**template_data)
 
     # ==========================================
+    # 【新增】保存生成的战报 (HTML) 到本地
+    # ==========================================
+    reports_dir = os.path.join(project_root, 'data', 'reports')
+    os.makedirs(reports_dir, exist_ok=True)
+    report_file = os.path.join(reports_dir, f"daily_report_{today_str}.html")
+
+    try:
+        with open(report_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        logger.info(f"💾 每日战报 HTML 已保存至: {report_file}")
+    except Exception as e:
+        logger.error(f"❌ 保存 HTML 战报失败: {e}")
+
+    # ==========================================
     # 步骤 4: 发送邮件
     # ==========================================
     logger.info("👉 步骤 4: 正在推送邮件...")
+    if not RECEIVER_EMAILS:
+        logger.warning("⚠️ 未配置收件人邮箱 (RECEIVER_EMAILS)，跳过邮件发送步骤。")
+        return
+    
     notifier = EmailNotifier()
     
     # 可以在标题里加上直观的提示，让你不点开邮件就知道今天有没有干货
@@ -91,16 +128,22 @@ def main():
     else:
         subject = f"📭 ArXiv 每日速递 - 今日暂无匹配 ({today_str})"
         
-    success = notifier.send_email(
-        receiver_email=RECEIVER_EMAIL,
-        subject=subject,
-        html_content=html_content
-    )
+    # 循环发送给所有配置的用户
+    success_count = 0
+    for email_addr in RECEIVER_EMAILS:
+        success = notifier.send_email(
+            receiver_email=email_addr,
+            subject=subject,
+            html_content=html_content
+        )
+        if success:
+            success_count += 1
 
-    if success:
-        logger.info("✅ 整个工作流执行完毕，邮件发送成功！")
+    if success_count == len(RECEIVER_EMAILS):
+        logger.info(f"✅ 整个工作流执行完毕，成功发送给 {success_count} 位用户！")
     else:
-        logger.error("❌ 邮件发送失败，请检查 notifier 模块。")
+        logger.warning(f"⚠️ 邮件发送完成，但部分失败。成功: {success_count}/{len(RECEIVER_EMAILS)}。")
+
 
 if __name__ == "__main__":
     main()

@@ -1,46 +1,121 @@
+# 🤖 PaperAgent: ArXiv 每日论文智能审稿与订阅系统
 
-```
-arxiv_daily_reviewer/
-├── .github/
-│   └── workflows/
-│       └── daily_run.yml        # [部署] GitHub Actions 定时任务配置文件 (Cron job)
-├── data/                        # [本地存储] 临时数据目录 (务必在 .gitignore 中忽略)
-│   ├── pdfs/                    # 存放自动下载的论文 PDF 文件
-│   └── reviews/                 # 存放 Agent 输出的中间评审结果 (JSON 格式)
-├── src/                         # [核心代码]
-│   ├── __init__.py
-│   ├── config.py                # 全局配置管理 (如设定的 ArXiv 领域代码、打分阈值等)
-│   ├── fetcher/                 # -> 模块一：精准收集
-│   │   ├── __init__.py
-│   │   ├── arxiv_client.py      # 负责调用 ArXiv API 获取昨日最新论文列表及元数据
-│   │   └── pdf_parser.py        # 负责下载 PDF 并提取文本 (支持 PyMuPDF 等)
-│   ├── reviewer/                # -> 模块二：多智能体审稿系统
-│   │   ├── __init__.py
-│   │   ├── graph.py             # 定义 Agent 之间的流转逻辑 (如果是 LangGraph)
-│   │   ├── agents.py            # 实例化不同的 LLM Agent (初筛员、精读专家、Meta-Reviewer)
-│   │   ├── prompts.py           # 集中管理所有 Prompt (避免将大段文本混在业务代码里)
-│   │   └── schemas.py           # 定义 Pydantic Models，强制 LLM 输出格式化的 JSON
-│   ├── ranker/                  # -> 模块三：聚合与排序
-│   │   ├── __init__.py
-│   │   └── sorter.py            # 读取 reviews/ 下的 JSON，执行降序排序并选出 Top K
-│   ├── notifier/                # -> 模块四：生成战报与推送
-│   │   ├── __init__.py
-│   │   ├── email_sender.py      # 封装 SMTP 邮件发送逻辑
-│   │   └── templates/
-│   │       └── daily_report.html # Jinja2 模板文件，用于渲染最终美观的邮件排版
-│   └── main.py                  # [入口文件] 调度器，负责把 1->2->3->4 串联起来执行
-├── .env.example                 # 环境变量模板 (包含各种 API Key 和邮箱密码字段的占位符)
-├── .gitignore                   # 告诉 Git 忽略哪些文件 (如 .env, venv/, data/ 等)
-├── requirements.txt             # 项目依赖项 (如 langchain, google-genai, arxiv, jinja2)
-└── README.md                    # 项目说明文档，记录如何本地运行和配置
+PaperAgent 是一个自动化的多智能体工作流项目。它能够每天定时从 ArXiv 抓取指定领域的最新论文，利用大语言模型（如 Gemini / GPT 等）根据你自定义的关键词进行“相关度”与“质量”的双重打分，最后生成精美的 HTML 战报，并通过邮件一键推送到多个订阅者的邮箱，同时在本地进行归档备份。
+
+## ✨ 核心特性
+
+- **🎯 精准抓取 (Fetcher)**: 调用 ArXiv API 自动获取过去 24 小时内特定领域（如 `cs.AI`, `cs.CL`）的最新论文。
+- **🧠 AI 智能粗筛 (Reviewer)**: 使用大模型（默认 `gemini-2.5-pro`）对论文摘要进行批量评估，根据预设的关键词输出结构化评分（相关度 & 质量）。
+- **📊 动态排版与多用户推送 (Notifier)**: 基于 Jinja2 引擎渲染高颜值的 HTML 每日战报，并支持通过 SMTP 服务群发给多个用户。
+- **💾 本地数据沉淀**: 自动将每日的 AI 过滤打分结果存为 `JSON`，将战报存为 `HTML`，方便后续用于 RAG 知识库检索或网页端展示。
+
+---
+
+## 🏗️ 系统架构
+
+项目的执行流水线如下：
+1. **获取 (Fetch)** -> 2. **打分 (Review)** -> 3. **排序 (Rank)** -> 4. **推送与归档 (Notify & Archive)**
+
+
+---
+
+## 🚀 快速开始
+
+### 1. 环境准备
+
+确保你的机器上安装了 Python 3.9+，然后克隆项目并安装依赖：
+
+```bash
+git clone [https://github.com/yourusername/paperagent.git](https://github.com/yourusername/paperagent.git)
+cd paperagent
+pip install -r requirements.txt
 ```
 
+### 2. 配置环境变量 (.env)
 
-## QA：获取邮箱的“授权码” (App Password)
+在项目根目录下创建一个 `.env` 文件，填入你的大模型 API 密钥以及发信邮箱的 SMTP 配置。
 
-为了安全，现在几乎所有的邮箱都不允许第三方脚本直接用“登录密码”发邮件，而是需要生成一串专用的“授权码”。
+代码段
 
-- **如果是 QQ 邮箱**：登录网页版 -> 设置 -> 账号 -> 找到“POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务” -> 开启“POP3/SMTP服务” -> 点击“生成授权码”。你会得到一串英文字母（如 `abcdxyz...`），把它填到 `.env` 的 `SMTP_PASSWORD` 里。
-- **如果是 网易 163 邮箱**：登录网页版 -> 设置 -> POP3/SMTP/IMAP -> 开启 SMTP 服务 -> 新增授权码。
-- **如果是 Gmail**：登录 Google 账号 -> 安全性 -> 开启“两步验证” -> 搜索“应用专用密码” (App Passwords) -> 创建一个名为 "Python" 的密码，得到一串 16 位的字符，填入 `SMTP_PASSWORD`。
+```
+# 大模型 API 配置 (根据 src/llmapi/model.py 里的具体网关逻辑配置)
+LLM_API_KEY="sk-xxxxxx"
+LLM_BASE_URL="[https://api.your-gateway.com/v1](https://api.your-gateway.com/v1)"
 
+# 邮件 SMTP 配置 (以 QQ 邮箱或网易邮箱为例)
+SMTP_HOST="smtp.qq.com"  # 或者是 smtp.163.com, smtp.gmail.com 等
+SMTP_PORT=465            # SSL 端口通常为 465
+SMTP_USERNAME="your_sender_email@qq.com"
+SMTP_PASSWORD="你的邮箱授权码" # 注意：这里填的是授权码，不是登录密码！
+
+# 接收者邮箱配置 (支持多个邮箱，用英文逗号分隔)
+RECEIVER_EMAILS="alice@example.com, bob@example.com"
+```
+
+> **💡 关于邮箱授权码 (App Password) 的获取：**
+>
+> - **QQ邮箱**：设置 -> 账号 -> POP3/IMAP/SMTP/Exchange服务 -> 开启 SMTP -> 生成授权码。
+> - **Gmail**：Google 账号 -> 安全性 -> 两步验证 -> 应用专用密码 (App Passwords) -> 生成 16 位字符。
+
+### 3. 自定义检索规则
+
+打开 `main.py`，在 `main()` 函数开头找到**配置区**，你可以根据自己的研究方向修改：
+
+Python
+
+```
+TARGET_CATEGORIES = ["cs.AI", "cs.CL", "cs.LG"] # ArXiv 领域代码
+KEYWORDS = ["LLM Agent", "Reasoning", "Reinforcement Learning"] # 你的关注点
+MIN_SCORE_THRESHOLD = 5 # 触发推送的最低分数线
+MODEL_NAME = "gemini-2.5-pro" # 调用的具体模型名
+```
+
+### 4. 运行 Agent
+
+你可以通过以下命令直接运行一次测试：
+
+Bash
+
+```
+python main.py
+```
+
+如果你只想测试邮件发送配置是否正确，可以运行：
+
+Bash
+
+```
+python test_real_email.py
+```
+
+------
+
+## 📂 目录结构
+
+Plaintext
+
+```
+paperagent/
+├── data/                        # 自动生成的本地数据 (已在 .gitignore 中忽略)
+│   ├── pdfs/                    # 论文 PDF 缓存
+│   ├── reports/                 # 每日生成的 HTML 战报 (daily_report_YYYY-MM-DD.html)
+│   └── reviews/                 # AI 每日打分结果 (filter_results_YYYY-MM-DD.json)
+├── src/                         
+│   ├── fetcher/                 # 负责 API 请求与 PDF 抓取
+│   ├── llmapi/                  # 大模型请求网关封装
+│   ├── reviewer/                # Prompt 构建与批量打分逻辑
+│   ├── ranker/                  # 数据清洗与排序逻辑
+│   └── notifier/                # Jinja2 模板与 SMTP 邮件发送
+├── .env                         # 环境变量 (不要提交到 Git)
+├── main.py                      # 工作流主调度入口
+└── requirements.txt             # 项目依赖
+```
+
+------
+
+## 🛠️ 接下来：自动化部署建议
+
+如果你希望让它每天自动运行，可以通过以下两种方式部署：
+
+1. **Linux Crontab**: 适合有一台一直开机的云服务器（例如每天早晨 8 点运行：`0 8 * * * cd /path/to/paperagent && python main.py`）。
+2. **GitHub Actions**: 利用 `.github/workflows/daily_run.yml` 配置 Cron Job，白嫖 GitHub 的算力自动发邮件。
