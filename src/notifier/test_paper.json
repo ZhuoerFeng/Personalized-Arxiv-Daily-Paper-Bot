@@ -1,0 +1,17 @@
+{
+  "date": "2026-03-03",
+  "keywords": "Multi-agent, RAG",
+  "total_scanned": 150,
+  "papers": [
+    {
+      "title": "Agentic Workflow in RAG...",
+      "authors": ["Alice", "Bob"],
+      "published": "2026-03-02",
+      "summary": "This paper introduces...",
+      "id": "2403.12345",
+      "pdf_url": "http://arxiv.org/pdf/2403.12345v1",
+      "relevance_score": 5,
+      "relevance_reason": "核心方法直接探讨了RAG场景下的多智能体协作"
+    }
+  ]
+}

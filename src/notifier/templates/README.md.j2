@@ -1,0 +1,30 @@
+# 🚀 ArXiv 每日速递：高相关度论文列表
+
+**生成日期:** {{ date }}
+**关注领域/关键词:** `{{ keywords }}`
+**今日扫描:** 共筛选了 {{ total_scanned }} 篇最新论文，为您精选出以下 {{ papers|length }} 篇高潜力文章。
+
+---
+
+## 🏆 精选论文 (按相关度排序)
+
+{% for paper in papers %}
+### [{{ paper.relevance_score }}分] {{ paper.title }}
+
+- **👤 作者:** {{ paper.authors | join(', ') }}
+- **📅 发布时间:** {{ paper.published }} | **🔗 链接:** [ArXiv 页面](https://arxiv.org/abs/{{ paper.id }}) / [PDF 下载]({{ paper.pdf_url }})
+- **💡 入选理由:** *{{ paper.relevance_reason }}*
+
+<details>
+<summary><strong>📝 展开查看摘要 (Abstract)</strong></summary>
+
+> {{ paper.summary }}
+
+</details>
+
+---
+{% else %}
+*今日没有找到匹配度大于设定阈值的新论文。明天再来看看吧！*
+{% endfor %}
+
+> *此报告由 AI Agent 自动收集并筛选生成。*
