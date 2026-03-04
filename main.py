@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
 import json
-
+from src.fetcher.pdf_parser import download_pdf, extract_main_text_from_pdf
+from src.reviewer.deep_reviewer import generate_icml_review
 
 # 1. 初始化路径与环境变量
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -67,7 +68,30 @@ def main():
         logger.info(f"💰 本次运行总计消耗 Token: {total_tokens_consumed}")
 
         # ==========================================
-        # 【新增】保存过滤结果 (JSON) 到本地
+        # 步骤 2.5: 对高分论文进行全文下载与深度审稿
+        # ==========================================
+        if len(high_value_papers) > 0:
+            logger.info("👉 步骤 2.5: 正在对高分论文进行全文下载与深度审稿 (ICML 标准)...")
+            for paper in high_value_papers:
+                try:
+                    # 1. 下载 PDF
+                    pdf_path = download_pdf(paper['pdf_url'], paper['id'])
+                    # 2. 提取正文
+                    paper_text = extract_main_text_from_pdf(pdf_path, max_pages=15)
+                    # 3. AI 审稿
+                    review_result, review_tokens = generate_icml_review(paper_text, MODEL_NAME)
+                    
+                    if review_result:
+                        paper['icml_review'] = review_result
+                        total_tokens_consumed += review_tokens
+                        logger.info(f"✅ 完成论文 {paper['id']} 的深度审稿 (推荐分: {review_result['overall_recommendation']}/6)")
+                except Exception as e:
+                    logger.error(f"❌ 处理论文 {paper['id']} 深度审稿时失败: {e}")
+
+        logger.info(f"💰 本次运行 (含粗筛+精审) 总计消耗 Token: {total_tokens_consumed}")
+
+        # ==========================================
+        # 保存过滤结果 (JSON) 到本地
         # ==========================================
         reviews_dir = os.path.join(project_root, 'data', 'reviews')
         os.makedirs(reviews_dir, exist_ok=True)

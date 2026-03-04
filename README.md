@@ -6,6 +6,7 @@ PaperAgent 是一个自动化的多智能体工作流项目。它能够每天定
 
 - **🎯 精准抓取 (Fetcher)**: 调用 ArXiv API 自动获取过去 24 小时内特定领域（如 `cs.AI`, `cs.CL`）的最新论文。
 - **🧠 AI 智能粗筛 (Reviewer)**: 使用大模型（默认 `gemini-2.5-pro`）对论文摘要进行批量评估，根据预设的关键词输出结构化评分（相关度 & 质量）。
+- **🕵️‍♂️ 全文深度审稿 (Deep Reviewer) `[NEW!]`**: 自动下载高分论文的 PDF，智能解析双栏/单栏排版（最多提取前 15 页并自动在 References 处截断）。随后依据 ICML 官方审稿准则，从 *Soundness, Presentation, Significance, Originality* 四个维度给出详细的图文评价、优缺点分析及最终录用推荐。
 - **📊 动态排版与多用户推送 (Notifier)**: 基于 Jinja2 引擎渲染高颜值的 HTML 每日战报，并支持通过 SMTP 服务群发给多个用户。
 - **💾 本地数据沉淀**: 自动将每日的 AI 过滤打分结果存为 `JSON`，将战报存为 `HTML`，方便后续用于 RAG 知识库检索或网页端展示。
 

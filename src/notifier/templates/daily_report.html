@@ -48,6 +48,32 @@
                 <div class="abstract">
                     <strong>摘要:</strong> {{ paper.summary }}
                 </div>
+
+                {% if paper.icml_review %}
+                <details style="margin-top: 15px; cursor: pointer;">
+                    <summary style="color: #2b6cb0; font-weight: bold; background-color: #e2e8f0; padding: 8px; border-radius: 4px;">
+                        🤖 展开 AI 深度审稿意见 (ICML 标准)
+                    </summary>
+                    <div style="background-color: #f7fafc; padding: 15px; border-left: 4px solid #4a5568; margin-top: 10px; font-size: 14px;">
+                        <div style="margin-bottom: 10px;">
+                            <span class="score-badge" style="background-color: #c6f6d5; color: #22543d;">🎯 最终推荐: {{ paper.icml_review.overall_recommendation }}/6</span>
+                            <span class="score-badge" style="background-color: #e2e8f0; color: #4a5568;">🛡️ 置信度: {{ paper.icml_review.confidence }}/5</span>
+                        </div>
+                        <div style="margin-bottom: 15px; font-size: 13px; color: #4a5568;">
+                            <strong>细项评分:</strong>
+                            Soundness: {{ paper.icml_review.soundness }}/4 &nbsp;|&nbsp; 
+                            Presentation: {{ paper.icml_review.presentation }}/4 &nbsp;|&nbsp; 
+                            Significance: {{ paper.icml_review.significance }}/4 &nbsp;|&nbsp; 
+                            Originality: {{ paper.icml_review.originality }}/4
+                        </div>
+                        
+                        <p><strong>📝 Summary:</strong><br>{{ paper.icml_review.summary | replace('\n', '<br>') }}</p>
+                        <p><strong>⚖️ Strengths & Weaknesses:</strong><br>{{ paper.icml_review.strengths_and_weaknesses | replace('\n', '<br>') }}</p>
+                        <p><strong>❓ Questions For Authors:</strong><br>{{ paper.icml_review.questions_for_authors | replace('\n', '<br>') }}</p>
+                        <p><strong>🛑 Limitations:</strong><br>{{ paper.icml_review.limitations | replace('\n', '<br>') }}</p>
+                    </div>
+                </details>
+                {% endif %}
                 <div class="links" style="margin-top: 15px;">
                     <a href="https://arxiv.org/abs/{{ paper.id }}" target="_blank">📄 ArXiv 页面</a>
                     <a href="{{ paper.pdf_url }}" target="_blank">📥 下载 PDF</a>
